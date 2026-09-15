@@ -1,0 +1,1254 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Central de Arquiteturas</title>
+  <style>
+    :root {
+      --bg: #fafafa;
+      --dot: #e3e3e6;
+      --painel-bg: #ffffff;
+      --painel-borda: #e6e6e9;
+      --texto: #2b2d33;
+      --texto-fraco: #7a7d87;
+      --sombra: 0 2px 10px rgba(0, 0, 0, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--texto);
+    }
+
+    #grafo {
+      position: fixed;
+      inset: 0;
+      background-image: radial-gradient(var(--dot) 1.2px, transparent 1.2px);
+      background-size: 22px 22px;
+      cursor: grab;
+    }
+
+    #grafo.arrastando {
+      cursor: grabbing;
+    }
+
+    #legenda {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      background: var(--painel-bg);
+      border: 1px solid var(--painel-borda);
+      border-radius: 10px;
+      box-shadow: var(--sombra);
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      z-index: 5;
+    }
+
+    #legenda .item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 3px 0;
+      white-space: nowrap;
+    }
+
+    #legenda .bola {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    #legenda h4 {
+      margin: 0 0 6px;
+      font-size: 0.78rem;
+      color: var(--texto-fraco);
+      font-weight: 600;
+    }
+
+    #cabecalho {
+      position: fixed;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--painel-bg);
+      border: 1px solid var(--painel-borda);
+      border-radius: 10px;
+      box-shadow: var(--sombra);
+      padding: 8px 18px;
+      font-size: 0.85rem;
+      z-index: 5;
+      text-align: center;
+    }
+
+    #cabecalho strong {
+      display: block;
+      font-size: 0.95rem;
+    }
+
+    #cabecalho span {
+      color: var(--texto-fraco);
+      font-size: 0.75rem;
+    }
+
+    #controles {
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #controles button {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      border: 1px solid var(--painel-borda);
+      background: var(--painel-bg);
+      box-shadow: var(--sombra);
+      cursor: pointer;
+      font-size: 1rem;
+      color: var(--texto);
+    }
+
+    #controles button:hover {
+      background: #f2f2f4;
+    }
+
+    #btn-pausar.pausado-ativo {
+      background: #9b6ef3;
+      color: white;
+      border-color: #9b6ef3;
+    }
+
+    #btn-pausar.pausado-ativo:hover {
+      background: #8a5be0;
+    }
+
+    #aviso-pausado {
+      position: fixed;
+      top: 68px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #9b6ef3;
+      color: white;
+      font-weight: 600;
+      font-size: 0.82rem;
+      padding: 7px 16px;
+      border-radius: 20px;
+      box-shadow: var(--sombra);
+      z-index: 6;
+      display: none;
+    }
+
+    #aviso-pausado.visivel {
+      display: block;
+    }
+
+    #toast {
+      position: fixed;
+      bottom: 18px;
+      left: 18px;
+      z-index: 5;
+      background: var(--painel-bg);
+      border: 1px solid var(--painel-borda);
+      border-radius: 8px;
+      box-shadow: var(--sombra);
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      color: var(--texto-fraco);
+      max-width: 420px;
+      display: none;
+    }
+
+    #toast.visivel {
+      display: block;
+    }
+
+    #painel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100%;
+      width: 340px;
+      background: var(--painel-bg);
+      border-left: 1px solid var(--painel-borda);
+      box-shadow: -6px 0 18px rgba(0, 0, 0, 0.06);
+      transform: translateX(100%);
+      transition: transform 0.2s ease;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #painel.aberto {
+      transform: translateX(0);
+    }
+
+    #painel-topo {
+      padding: 20px 20px 12px;
+      border-bottom: 1px solid var(--painel-borda);
+    }
+
+    #painel-fechar {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+      border: none;
+      background: none;
+      font-size: 1.1rem;
+      cursor: pointer;
+      color: var(--texto-fraco);
+    }
+
+    #painel-titulo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    #painel-titulo .bola-grande {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+    }
+
+    #painel-titulo h2 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    #painel-estado {
+      font-size: 0.82rem;
+      color: var(--texto-fraco);
+    }
+
+    #painel-corpo {
+      padding: 16px 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+    #painel-corpo .grupo {
+      margin-bottom: 18px;
+    }
+
+    #painel-corpo .grupo h4 {
+      margin: 0 0 8px;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--texto-fraco);
+    }
+
+    .botoes {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    button.acao {
+      border: none;
+      border-radius: 8px;
+      padding: 9px 14px;
+      font-size: 0.84rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    button.acao:hover {
+      opacity: 0.85;
+    }
+
+    button.acao:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .btn-iniciar {
+      background: #33c481;
+      color: white;
+    }
+
+    .btn-parar {
+      background: #2a2f3a;
+      color: white;
+    }
+
+    .btn-abrir {
+      background: transparent;
+      color: #4f8cff;
+      border: 1px solid #4f8cff;
+    }
+
+    .btn-perigo {
+      background: #ef5a5a;
+      color: white;
+    }
+
+    .btn-logs {
+      background: #f2f2f4;
+      color: var(--texto);
+    }
+
+    #painel-logs {
+      background: #0b0d11;
+      border-radius: 8px;
+      padding: 10px 12px;
+      margin-top: 10px;
+      height: 220px;
+      overflow-y: auto;
+      font-family: Consolas, monospace;
+      font-size: 0.72rem;
+      line-height: 1.5;
+      color: #c7ccd6;
+      white-space: pre-wrap;
+      word-break: break-all;
+      display: none;
+    }
+
+    #painel-logs.visivel {
+      display: block;
+    }
+
+    #painel-logs .erro {
+      color: #ff8080;
+    }
+
+    .texto-fraco {
+      color: var(--texto-fraco);
+      font-size: 0.82rem;
+      line-height: 1.5;
+    }
+
+    #fluxo-legenda {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--painel-bg);
+      border: 1px solid var(--painel-borda);
+      border-radius: 10px;
+      box-shadow: var(--sombra);
+      padding: 10px 18px;
+      font-size: 0.85rem;
+      z-index: 6;
+      max-width: 640px;
+      text-align: center;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+
+    #fluxo-legenda.visivel {
+      opacity: 1;
+    }
+
+    #fluxo-legenda strong {
+      color: #4f8cff;
+    }
+  </style>
+</head>
+
+<body>
+
+  <canvas id="grafo"></canvas>
+
+  <div id="cabecalho">
+    <strong>Central de Arquiteturas</strong>
+    <span>clique em um nó para ver detalhes · arraste para reorganizar · role para dar zoom</span>
+  </div>
+
+  <div id="legenda">
+    <h4>Legenda</h4>
+    <div class="item"><span class="bola" style="background:#1d3fae"></span> Início</div>
+    <div class="item"><span class="bola" style="background:#4f8cff"></span> Monolito</div>
+    <div class="item"><span class="bola" style="background:#17b897"></span> Microsserviços</div>
+    <div class="item"><span class="bola" style="background:#33c481"></span> Rodando</div>
+    <div class="item"><span class="bola" style="background:#b8bfc9"></span> Parado</div>
+    <div class="item"><span class="bola" style="background:#ef5a5a"></span> Erro</div>
+    <div class="item"><span class="bola" style="background:#9b6ef3"></span> Carregando</div>
+  </div>
+
+  <div id="controles">
+    <button id="btn-pausar" title="Pausar o fluxo">⏸</button>
+    <button id="btn-zoom-in" title="Aumentar zoom">+</button>
+    <button id="btn-zoom-out" title="Diminuir zoom">–</button>
+    <button id="btn-recentrar" title="Recentralizar">⟲</button>
+  </div>
+
+  <div id="aviso-pausado">⏸ FLUXO PAUSADO — clique em ▶ para continuar de onde parou</div>
+
+  <div id="toast"></div>
+
+  <div id="painel">
+    <div id="painel-topo">
+      <button id="painel-fechar">✕</button>
+      <div id="painel-titulo">
+        <span class="bola-grande" id="painel-bola"></span>
+        <h2 id="painel-nome">—</h2>
+      </div>
+      <div id="painel-estado">—</div>
+    </div>
+    <div id="painel-corpo"></div>
+  </div>
+
+  <div id="fluxo-legenda"></div>
+
+  <script>
+    const CORES = {
+      inicio: '#1d3fae',
+      monolito: '#4f8cff',
+      microsservicos: '#17b897',
+      rodando: '#33c481',
+      parado: '#b8bfc9',
+      erro: '#ef5a5a',
+      carregando: '#9b6ef3',
+    };
+
+    const NOS = [
+      { id: 'inicio', label: 'Início', categoria: 'raiz', r: 24, fixo: true },
+
+      { id: 'monolith', label: 'Monolito', categoria: 'monolito', r: 17, ramo: 'monolith' },
+      { id: 'apresentacao', label: 'Apresentação', sub: 'Controller · HTTP/Zod', categoria: 'servico', servico: 'monolith', ramo: 'monolith', r: 14, offsetX: 0, offsetY: 95 },
+      { id: 'aplicacao', label: 'Aplicação', sub: 'Use Case · orquestra', categoria: 'servico', servico: 'monolith', ramo: 'monolith', r: 14, offsetX: 0, offsetY: 175 },
+      { id: 'dominio', label: 'Domínio', sub: 'Entidade · invariantes', categoria: 'servico', servico: 'monolith', ramo: 'monolith', r: 14, offsetX: 0, offsetY: 255 },
+      { id: 'persistencia', label: 'Persistência', sub: 'Repository', categoria: 'servico', servico: 'monolith', ramo: 'monolith', r: 14, offsetX: 0, offsetY: 335 },
+      { id: 'banco', label: 'Banco de Dados', sub: 'SQLite', categoria: 'servico', servico: 'monolith', ramo: 'monolith', r: 14, offsetX: 0, offsetY: 415 },
+
+      { id: 'microservices', label: 'Microsserviços', categoria: 'microsservicos', r: 17, ramo: 'microservices' },
+      { id: 'cliente', label: 'Cliente', sub: 'curl / navegador', categoria: 'servico', decorativo: true, ramo: 'microservices', r: 12, offsetX: 0, offsetY: 90 },
+      { id: 'api-gateway', label: 'API Gateway', categoria: 'servico', servico: 'api-gateway', ramo: 'microservices', r: 13, offsetX: 0, offsetY: 165 },
+      { id: 'ms-orders', label: 'ms-orders', sub: 'SQLite + Outbox + Saga', categoria: 'servico', servico: 'ms-orders', ramo: 'microservices', r: 13, offsetX: 0, offsetY: 245 },
+      { id: 'broker', label: 'Broker', sub: 'pub/sub (substitui Kafka)', categoria: 'servico', servico: 'broker', ramo: 'microservices', r: 13, offsetX: 0, offsetY: 325 },
+      { id: 'ms-inventory', label: 'ms-inventory', sub: 'estoque em memória', categoria: 'servico', servico: 'ms-inventory', ramo: 'microservices', r: 12, offsetX: -115, offsetY: 405 },
+      { id: 'ms-payments', label: 'ms-payments', sub: 'pagamento simulado', categoria: 'servico', servico: 'ms-payments', ramo: 'microservices', r: 12, offsetX: 115, offsetY: 405 },
+    ];
+
+    const ARESTAS = [
+      ['inicio', 'monolith', 'estrutural'], ['inicio', 'microservices', 'estrutural'],
+      ['monolith', 'apresentacao', 'estrutural'],
+      ['apresentacao', 'aplicacao', 'sincrono'],
+      ['aplicacao', 'dominio', 'sincrono'],
+      ['dominio', 'persistencia', 'sincrono'],
+      ['persistencia', 'banco', 'sincrono'],
+
+      ['microservices', 'cliente', 'estrutural'],
+      ['cliente', 'api-gateway', 'sincrono'],
+      ['api-gateway', 'ms-orders', 'sincrono'],
+      ['ms-orders', 'broker', 'assincrono'],
+      ['broker', 'ms-inventory', 'assincrono'],
+      ['broker', 'ms-payments', 'assincrono'],
+    ];
+
+    const ARQUITETURAS = {
+      monolith: { nome: 'Monolito em 5 Camadas', url: 'http://localhost:3000' },
+      microservices: { nome: 'Microsserviços Distribuídos', url: 'http://localhost:8090' },
+    };
+
+    const canvas = document.getElementById('grafo');
+    const ctx = canvas.getContext('2d');
+    let largura, altura;
+    function redimensionar() {
+      largura = canvas.width = window.innerWidth;
+      altura = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', redimensionar);
+    redimensionar();
+
+    const nos = NOS.map((n) => ({ ...n, x: 0, y: 0, vx: 0, vy: 0, estado: 'parado', carregando: false, destaque: null, solto: false }));
+    const nosPorId = Object.fromEntries(nos.map((n) => [n.id, n]));
+    const arestas = ARESTAS.map(([a, b, tipo]) => ({ a: nosPorId[a], b: nosPorId[b], tipo }));
+
+    (function posicionarInicial() {
+      nosPorId['inicio'].x = 0; nosPorId['inicio'].y = -280;
+      nosPorId['monolith'].x = -230; nosPorId['monolith'].y = -140;
+      nosPorId['microservices'].x = 230; nosPorId['microservices'].y = -140;
+    })();
+
+    const nosComOffset = nos.filter((n) => n.offsetX !== undefined);
+
+    let camera = { x: 0, y: 0, escala: 1 };
+    let arrastando = null;
+    let noSelecionado = null;
+    let pausado = false;
+    let tempoVirtual = 0;
+    let ultimoInstanteReal = performance.now();
+    let eventosAgendados = [];
+
+    function agendarVirtual(callback, atrasoMs) {
+      eventosAgendados.push({ alvo: tempoVirtual + atrasoMs, callback });
+    }
+
+    function avancarRelogioVirtual() {
+      const agoraReal = performance.now();
+      const delta = agoraReal - ultimoInstanteReal;
+      ultimoInstanteReal = agoraReal;
+      if (pausado) return;
+      tempoVirtual += delta;
+      eventosAgendados = eventosAgendados.filter((e) => {
+        if (tempoVirtual < e.alvo) return true;
+        e.callback();
+        return false;
+      });
+    }
+
+    function alternarPausa() {
+      pausado = !pausado;
+      ultimoInstanteReal = performance.now();
+      atualizarBotaoPausa();
+    }
+
+    function atualizarBotaoPausa() {
+      const btn = document.getElementById('btn-pausar');
+      if (!btn) return;
+      btn.textContent = pausado ? '▶' : '⏸';
+      btn.title = pausado ? 'Despausar o fluxo' : 'Pausar o fluxo';
+      btn.classList.toggle('pausado-ativo', pausado);
+      document.getElementById('aviso-pausado').classList.toggle('visivel', pausado);
+    }
+
+    function passoSimulacao() {
+      const REPULSAO = 9000;
+      const MOLA_TOPO = 0.03;
+      const ATRITO = 0.62;
+      const DIST_IDEAL_RAIZ = 270;
+      const topo = nos.filter((n) => n.offsetX === undefined);
+      for (let i = 0; i < topo.length; i++) {
+        for (let j = i + 1; j < topo.length; j++) {
+          const a = topo[i], b = topo[j];
+          let dx = a.x - b.x, dy = a.y - b.y;
+          let dist2 = dx * dx + dy * dy || 0.01;
+          if (dist2 > 200 * 200) continue;
+          const dist = Math.sqrt(dist2);
+          const forca = REPULSAO / dist2;
+          const fx = (dx / dist) * forca, fy = (dy / dist) * forca;
+          if (!a.fixo && a !== arrastando) { a.vx += fx; a.vy += fy; }
+          if (!b.fixo && b !== arrastando) { b.vx -= fx; b.vy -= fy; }
+        }
+      }
+
+      for (const { a, b } of arestas) {
+        if (a.offsetX !== undefined || b.offsetX !== undefined) continue;
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        const forca = (dist - DIST_IDEAL_RAIZ) * MOLA_TOPO;
+        const fx = (dx / dist) * forca, fy = (dy / dist) * forca;
+        if (!a.fixo && a !== arrastando) { a.vx += fx; a.vy += fy; }
+        if (!b.fixo && b !== arrastando) { b.vx -= fx; b.vy -= fy; }
+      }
+
+      for (const n of nos) {
+        if (n.fixo || n === arrastando) { n.vx = 0; n.vy = 0; continue; }
+        if (n.offsetX !== undefined && !n.solto) continue;
+        n.vx *= ATRITO; n.vy *= ATRITO;
+        n.x += n.vx; n.y += n.vy;
+      }
+
+      for (const n of nosComOffset) {
+        if (n.solto || n === arrastando) continue;
+        const tronco = nosPorId[n.ramo];
+        n.x = tronco.x + n.offsetX;
+        n.y = tronco.y + n.offsetY;
+      }
+    }
+
+    function mundoParaTela(x, y) {
+      return { x: x * camera.escala + largura / 2 + camera.x, y: y * camera.escala + altura / 2 + camera.y };
+    }
+    function telaParaMundo(x, y) {
+      return { x: (x - largura / 2 - camera.x) / camera.escala, y: (y - altura / 2 - camera.y) / camera.escala };
+    }
+
+    const CORES_DESTAQUE = { ativo: '#4f8cff', sucesso: '#33c481', erro: '#ef5a5a' };
+
+    function corDoNo(n) {
+      if (n.categoria === 'raiz') return CORES.inicio;
+      if (n.destaque && n.destaque.ate > tempoVirtual) return CORES_DESTAQUE[n.destaque.tipo];
+      if (n.decorativo) return '#6b7280';
+      if (n.carregando || n.estado === 'preparando') return CORES.carregando;
+      if (n.categoria === 'monolito') return CORES.monolito;
+      if (n.categoria === 'microsservicos') return CORES.microsservicos;
+      if (n.estado === 'running') return CORES.rodando;
+      if (n.estado === 'erro') return CORES.erro;
+      return CORES.parado;
+    }
+
+    let pacotesAnimados = [];
+
+    function facilitarEntradaSaida(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+
+    const CORES_PACOTE = { ativo: '#ffd166', sucesso: '#33c481', erro: '#ff8080' };
+
+    function posicaoNoCaminho(caminhoIds, progresso) {
+      const nSegmentos = caminhoIds.length - 1;
+      const posGlobal = progresso * nSegmentos;
+      const indice = Math.min(nSegmentos - 1, Math.floor(posGlobal));
+      const t = posGlobal - indice;
+      const a = nosPorId[caminhoIds[indice]], b = nosPorId[caminhoIds[indice + 1]];
+      return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+    }
+
+    function desenharPacotes() {
+      const agora = tempoVirtual;
+      pacotesAnimados = pacotesAnimados.filter((p) => agora < p.inicio + p.duracao + 500);
+
+      for (const p of pacotesAnimados) {
+        const progressoLinear = Math.max(0, Math.min(1, (agora - p.inicio) / p.duracao));
+        const progresso = facilitarEntradaSaida(progressoLinear);
+        const desvanecendo = agora > p.inicio + p.duracao;
+        const alphaBase = desvanecendo ? Math.max(0, 1 - (agora - (p.inicio + p.duracao)) / 500) : 1;
+        const cor = CORES_PACOTE[p.tipo] ?? CORES_PACOTE.ativo;
+
+        for (let rastro = 4; rastro >= 0; rastro--) {
+          const pLinearRastro = Math.max(0, progressoLinear - rastro * 0.045);
+          const pRastro = facilitarEntradaSaida(pLinearRastro);
+          const pos = posicaoNoCaminho(p.caminho, pRastro);
+          const pt = mundoParaTela(pos.x, pos.y);
+          const escalaRastro = 1 - rastro * 0.15;
+          ctx.globalAlpha = alphaBase * (rastro === 0 ? 1 : 0.22 - rastro * 0.03);
+          desenharCartinha(pt.x, pt.y, 7 * camera.escala * escalaRastro, cor);
+        }
+        ctx.globalAlpha = 1;
+
+        const pos = posicaoNoCaminho(p.caminho, progresso);
+        const pt = mundoParaTela(pos.x, pos.y);
+        ctx.globalAlpha = alphaBase;
+        desenharQuadroInfo(pt.x, pt.y, p, cor);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    /*Desenha a cartinha*/
+    function desenharCartinha(cx, cy, raio, cor) {
+      const w = raio * 1.9, h = raio * 1.35;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.shadowColor = cor;
+      ctx.shadowBlur = 9;
+      ctx.fillStyle = cor;
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)';
+      ctx.lineWidth = Math.max(1, raio * 0.12);
+      ctx.beginPath();
+      ctx.roundRect(-w / 2, -h / 2, w, h, Math.max(1.5, raio * 0.22));
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-w / 2, -h / 2);
+      ctx.lineTo(0, h * 0.12);
+      ctx.lineTo(w / 2, -h / 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    /**
+     * Quadro informativo que acompanha a cartinha:
+     *   1) qual requisição/evento (título, em negrito)
+     *   2) o que está sendo feito agora (ação)
+     *   3) a resposta recebida, se já houver uma (colorida pelo resultado)
+     */
+    function desenharQuadroInfo(px, py, pacote, cor) {
+      const escala = camera.escala;
+      const linhas = [
+        { texto: pacote.titulo, cor: '#ffffff', peso: '700' },
+        { texto: pacote.acao, cor: '#c7ccd6', peso: '400' },
+      ];
+      if (pacote.resposta) linhas.push({ texto: '→ ' + pacote.resposta, cor, peso: '700' });
+
+      const tamanhoFonte = Math.max(9.5, 11 * escala);
+      ctx.font = `400 ${tamanhoFonte}px -apple-system, Segoe UI, Roboto, Arial`;
+      let larguraMax = 0;
+      for (const l of linhas) larguraMax = Math.max(larguraMax, ctx.measureText(l.texto).width);
+
+      const alturaLinha = tamanhoFonte * 1.45;
+      const padX = 10, padY = 8;
+      const larguraCaixa = larguraMax + padX * 2;
+      const alturaCaixa = alturaLinha * linhas.length + padY * 1.4;
+      const baseY = py - 22 * escala - alturaCaixa;
+
+      ctx.fillStyle = 'rgba(15,17,23,0.94)';
+      ctx.strokeStyle = cor;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.roundRect(px - larguraCaixa / 2, baseY, larguraCaixa, alturaCaixa, 7);
+      ctx.fill();
+      ctx.stroke();
+
+      // Pontinha conectando o quadro à cartinha
+      ctx.beginPath();
+      ctx.moveTo(px - 5, baseY + alturaCaixa);
+      ctx.lineTo(px + 5, baseY + alturaCaixa);
+      ctx.lineTo(px, baseY + alturaCaixa + 6);
+      ctx.closePath();
+      ctx.fillStyle = 'rgba(15,17,23,0.94)';
+      ctx.fill();
+
+      ctx.textAlign = 'center';
+      linhas.forEach((l, i) => {
+        ctx.font = `${l.peso} ${tamanhoFonte}px -apple-system, Segoe UI, Roboto, Arial`;
+        ctx.fillStyle = l.cor;
+        ctx.fillText(l.texto, px, baseY + padY + alturaLinha * (i + 0.72));
+      });
+    }
+
+    function desenhar() {
+      ctx.clearRect(0, 0, largura, altura);
+
+      for (const { a, b, tipo } of arestas) {
+        const pa = mundoParaTela(a.x, a.y), pb = mundoParaTela(b.x, b.y);
+        ctx.lineWidth = tipo === 'estrutural' ? 1.4 : 2;
+        ctx.setLineDash(tipo === 'assincrono' ? [7, 5] : []);
+        ctx.strokeStyle = a.categoria === 'raiz' ? corDoNo(b) : tipo === 'estrutural' ? '#d7d8dc' : '#9aa3b2';
+        ctx.beginPath();
+        ctx.moveTo(pa.x, pa.y);
+        ctx.lineTo(pb.x, pb.y);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+
+      for (const n of nos) {
+        const p = mundoParaTela(n.x, n.y);
+        const raio = n.r * camera.escala;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, raio, 0, Math.PI * 2);
+        ctx.fillStyle = corDoNo(n);
+        ctx.shadowColor = 'rgba(0,0,0,0.15)';
+        ctx.shadowBlur = 6;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        if (n === noSelecionado) {
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = '#111';
+          ctx.stroke();
+        }
+
+        ctx.font = `${Math.max(11, 12 * camera.escala)}px -apple-system, Segoe UI, Roboto, Arial`;
+        ctx.textAlign = 'center';
+        const larguraTexto = ctx.measureText(n.label).width;
+        ctx.fillStyle = 'rgba(255,255,255,0.92)';
+        ctx.fillRect(p.x - larguraTexto / 2 - 5, p.y + raio + 4, larguraTexto + 10, 16);
+        ctx.fillStyle = '#2b2d33';
+        ctx.fillText(n.label, p.x, p.y + raio + 16);
+
+        if (n.sub) {
+          ctx.font = `${Math.max(9, 10 * camera.escala)}px -apple-system, Segoe UI, Roboto, Arial`;
+          const larguraSub = ctx.measureText(n.sub).width;
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          ctx.fillRect(p.x - larguraSub / 2 - 4, p.y + raio + 21, larguraSub + 8, 14);
+          ctx.fillStyle = '#7a7d87';
+          ctx.fillText(n.sub, p.x, p.y + raio + 31);
+        }
+      }
+
+      desenharPacotes();
+    }
+
+    function laco() {
+      avancarRelogioVirtual();
+      passoSimulacao();
+      desenhar();
+      requestAnimationFrame(laco);
+    }
+    laco();
+
+    let panActivo = false;
+    let ultimoMouse = { x: 0, y: 0 };
+    let deslocamentoTotal = 0;
+
+    function noSobPonto(xTela, yTela) {
+      const { x, y } = telaParaMundo(xTela, yTela);
+      for (let i = nos.length - 1; i >= 0; i--) {
+        const n = nos[i];
+        const dx = x - n.x, dy = y - n.y;
+        if (Math.sqrt(dx * dx + dy * dy) <= n.r + 4) return n;
+      }
+      return null;
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      const n = noSobPonto(mx, my);
+      deslocamentoTotal = 0;
+      ultimoMouse = { x: mx, y: my };
+      if (n && !n.fixo) {
+        arrastando = n;
+      } else {
+        panActivo = true;
+        canvas.classList.add('arrastando');
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+      const dx = mx - ultimoMouse.x, dy = my - ultimoMouse.y;
+      deslocamentoTotal += Math.abs(dx) + Math.abs(dy);
+
+      if (arrastando) {
+        if (arrastando.offsetX !== undefined) arrastando.solto = true;
+        const mundo = telaParaMundo(mx, my);
+        arrastando.x = mundo.x; arrastando.y = mundo.y;
+      } else if (panActivo) {
+        camera.x += dx; camera.y += dy;
+      }
+      ultimoMouse = { x: mx, y: my };
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+      if (arrastando && deslocamentoTotal < 6) {
+        selecionarNo(arrastando);
+      }
+      arrastando = null;
+      panActivo = false;
+      canvas.classList.remove('arrastando');
+    });
+
+    canvas.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const fator = e.deltaY < 0 ? 1.1 : 0.9;
+      camera.escala = Math.min(2.5, Math.max(0.35, camera.escala * fator));
+    }, { passive: false });
+
+    document.getElementById('btn-pausar').addEventListener('click', alternarPausa);
+    document.getElementById('btn-zoom-in').addEventListener('click', () => (camera.escala = Math.min(2.5, camera.escala * 1.2)));
+    document.getElementById('btn-zoom-out').addEventListener('click', () => (camera.escala = Math.max(0.35, camera.escala * 0.8)));
+    document.getElementById('btn-recentrar').addEventListener('click', () => { camera = { x: 0, y: 0, escala: 1 }; });
+
+    const painel = document.getElementById('painel');
+    const painelBola = document.getElementById('painel-bola');
+    const painelNome = document.getElementById('painel-nome');
+    const painelEstado = document.getElementById('painel-estado');
+    const painelCorpo = document.getElementById('painel-corpo');
+    let fonteLogsAtual = null;
+
+    function fecharPainel() {
+      painel.classList.remove('aberto');
+      noSelecionado = null;
+      if (fonteLogsAtual) { fonteLogsAtual.close(); fonteLogsAtual = null; }
+    }
+    document.getElementById('painel-fechar').addEventListener('click', fecharPainel);
+
+    function textoEstado(n) {
+      if (n.categoria === 'raiz') return 'ponto de partida do painel';
+      if (n.carregando) return 'processando (aguarde)...';
+      if (n.categoria === 'monolito') {
+        return nosPorId['apresentacao'].estado === 'running' ? 'processo rodando (5 camadas, 1 processo)' : 'parado';
+      }
+      if (n.categoria === 'microsservicos') {
+        const filhos = nos.filter((x) => x.ramo === n.ramo && x.categoria === 'servico' && !x.decorativo);
+        const rodando = filhos.filter((x) => x.estado === 'running').length;
+        return `${rodando}/${filhos.length} processos rodando`;
+      }
+      return n.estado;
+    }
+
+    function selecionarNo(n) {
+      noSelecionado = n;
+      painel.classList.add('aberto');
+      painelBola.style.background = corDoNo(n);
+      painelNome.textContent = n.label;
+      painelEstado.textContent = textoEstado(n);
+
+      if (fonteLogsAtual) { fonteLogsAtual.close(); fonteLogsAtual = null; }
+
+      if (n.categoria === 'raiz') {
+        painelCorpo.innerHTML = `
+      <div class="grupo">
+        <p class="texto-fraco">Clique em <strong>Monolito</strong> ou <strong>Microsserviços</strong> no grafo para iniciar, parar ou ver os logs de cada arquitetura.</p>
+      </div>
+      <div class="grupo">
+        <h4>Ações globais</h4>
+        <div class="botoes"><button class="acao btn-perigo" id="btn-down">Parar tudo</button></div>
+      </div>`;
+        document.getElementById('btn-down').addEventListener('click', acaoRemoverTudo);
+        return;
+      }
+
+      const ramoId = n.ramo;
+      const arq = ARQUITETURAS[ramoId];
+
+      const botoesSimulacao = ramoId === 'monolith'
+        ? `<button class="acao btn-iniciar" data-acao="simular-monolith">Disparar pedido válido</button>
+       <button class="acao btn-perigo" data-acao="simular-monolith-erro">Disparar pedido inválido (400)</button>`
+        : `<button class="acao btn-iniciar" data-acao="simular-sucesso">Disparar pedido com pagamento aprovado</button>
+       <button class="acao btn-perigo" data-acao="simular-falha">Disparar pedido com pagamento recusado</button>`;
+
+      painelCorpo.innerHTML = `
+    <div class="grupo">
+      <h4>Ações — ${arq.nome}</h4>
+      <div class="botoes">
+        <button class="acao btn-iniciar" data-acao="start">Iniciar</button>
+        <button class="acao btn-parar" data-acao="stop">Parar</button>
+        <button class="acao btn-abrir" data-acao="abrir">Abrir</button>
+        <button class="acao btn-logs" data-acao="logs">Ver logs ao vivo</button>
+      </div>
+    </div>
+    <div class="grupo">
+      <h4>Fluxo em tempo real</h4>
+      <p class="texto-fraco">Cada botão dispara uma requisição HTTP real contra o serviço em execução. O grafo anima o trajeto da requisição pelas camadas/serviços, destacando o nó ativo em cada etapa; a legenda no rodapé descreve o que está ocorrendo.</p>
+      <div class="botoes">${botoesSimulacao}</div>
+    </div>
+    <div class="grupo" id="grupo-logs">
+      <div id="painel-logs"></div>
+    </div>`;
+
+      if (ramoId === 'monolith') {
+        painelCorpo.querySelector('[data-acao="simular-monolith"]').addEventListener('click', (e) => dispararSimulacao('/api/simular/monolith', e.target));
+        painelCorpo.querySelector('[data-acao="simular-monolith-erro"]').addEventListener('click', (e) => dispararSimulacao('/api/simular/monolith-erro', e.target));
+      } else {
+        painelCorpo.querySelector('[data-acao="simular-sucesso"]').addEventListener('click', (e) => dispararSimulacao('/api/simular/sucesso', e.target));
+        painelCorpo.querySelector('[data-acao="simular-falha"]').addEventListener('click', (e) => dispararSimulacao('/api/simular/falha', e.target));
+      }
+      painelCorpo.querySelector('[data-acao="start"]').addEventListener('click', () => acaoIniciarParar(ramoId, 'start'));
+      painelCorpo.querySelector('[data-acao="stop"]').addEventListener('click', () => acaoIniciarParar(ramoId, 'stop'));
+      painelCorpo.querySelector('[data-acao="abrir"]').addEventListener('click', () => window.open(arq.url, '_blank'));
+      painelCorpo.querySelector('[data-acao="logs"]').addEventListener('click', () => alternarLogs(ramoId));
+    }
+
+    function mostrarToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('visivel');
+      clearTimeout(mostrarToast._t);
+      mostrarToast._t = setTimeout(() => el.classList.remove('visivel'), 6000);
+    }
+
+    function marcarCarregando(ramoId, valor) {
+      for (const n of nos) {
+        if (n.ramo === ramoId) n.carregando = valor;
+      }
+    }
+
+    async function acaoIniciarParar(ramoId, acao) {
+      marcarCarregando(ramoId, true);
+      mostrarToast(
+        acao === 'start'
+          ? `Iniciando ${ARQUITETURAS[ramoId].nome}. A primeira execução leva mais tempo devido à instalação de dependências (npm install). Acompanhe o progresso pelo grafo e pelos logs.`
+          : `Parando ${ARQUITETURAS[ramoId].nome}...`,
+      );
+      try {
+        const resp = await fetch(`/api/${acao}/${ramoId}`, { method: 'POST' });
+        const dados = await resp.json();
+        if (!dados.ok) {
+          mostrarToast(`Falha ao ${acao === 'start' ? 'iniciar' : 'parar'}. Veja "Ver logs" ou o terminal do dashboard para detalhes.`);
+        } else if (acao === 'stop') {
+          mostrarToast(`${ARQUITETURAS[ramoId].nome}: parado.`);
+        }
+      } catch (erro) {
+        mostrarToast('Erro de rede ao falar com o dashboard: ' + erro.message);
+      } finally {
+        marcarCarregando(ramoId, false);
+        atualizarStatus();
+      }
+    }
+
+    async function acaoRemoverTudo() {
+      if (!confirm('Isso vai parar todos os processos desta demo (Monolito + Microsserviços). Continuar?')) return;
+      mostrarToast('Parando todos os processos...');
+      const resp = await fetch('/api/down', { method: 'POST' });
+      const dados = await resp.json();
+      mostrarToast(dados.ok ? 'Todos os processos foram parados.' : 'Falha ao parar — veja o terminal do dashboard.');
+      atualizarStatus();
+    }
+
+    function alternarLogs(ramoId) {
+      const painelLogs = document.getElementById('painel-logs');
+      if (fonteLogsAtual) {
+        fonteLogsAtual.close();
+        fonteLogsAtual = null;
+        painelLogs.classList.remove('visivel');
+        painelLogs.innerHTML = '';
+        return;
+      }
+
+      painelLogs.classList.add('visivel');
+      painelLogs.innerHTML = '<div class="texto-fraco">Conectando...</div>';
+      fonteLogsAtual = new EventSource('/api/logs/' + ramoId);
+      let primeira = true;
+      fonteLogsAtual.onmessage = (evento) => {
+        if (primeira) { painelLogs.innerHTML = ''; primeira = false; }
+        const linha = document.createElement('div');
+        linha.textContent = evento.data;
+        if (/erro|error|falhou|failed/i.test(evento.data)) linha.className = 'erro';
+        painelLogs.appendChild(linha);
+        painelLogs.scrollTop = painelLogs.scrollHeight;
+        while (painelLogs.childElementCount > 300) painelLogs.removeChild(painelLogs.firstChild);
+      };
+      fonteLogsAtual.onerror = () => {
+        fonteLogsAtual.close();
+        fonteLogsAtual = null;
+      };
+    }
+
+    async function atualizarStatus() {
+      try {
+        const resp = await fetch('/api/status');
+        const dados = await resp.json();
+        for (const [ramoId, lista] of Object.entries(dados)) {
+          for (const item of lista) {
+            const n = nos.find((x) => x.servico === item.servico && x.ramo === ramoId);
+            if (n) n.estado = item.estado;
+          }
+        }
+        if (noSelecionado) painelEstado.textContent = textoEstado(noSelecionado);
+      } catch {
+        mostrarToast('Não foi possível consultar o status. Verifique se o servidor do dashboard está em execução.');
+      }
+    }
+    atualizarStatus();
+    setInterval(atualizarStatus, 4000);
+
+    const DURACAO_DESTAQUE_MS = 2600;
+    const DURACAO_POR_TRECHO_MS = 1700;
+
+    function marcarNo(id, tipo) {
+      const n = nosPorId[id];
+      if (n) n.destaque = { tipo, ate: tempoVirtual + DURACAO_DESTAQUE_MS };
+    }
+
+    function animarCaminho(caminhoIds, { titulo, acao, resposta, tipo = 'ativo' } = {}) {
+      const duracao = DURACAO_POR_TRECHO_MS * (caminhoIds.length - 1);
+      return new Promise((resolve) => {
+        pacotesAnimados.push({ caminho: caminhoIds, inicio: tempoVirtual, duracao, titulo, acao, resposta, tipo });
+        for (let i = 1; i < caminhoIds.length - 1; i++) {
+          agendarVirtual(() => marcarNo(caminhoIds[i], tipo), (duracao * i) / (caminhoIds.length - 1));
+        }
+        agendarVirtual(resolve, duracao);
+      });
+    }
+
+    let alvoOcultarLegendaFluxo = null;
+    function mostrarLegendaFluxo(html) {
+      const el = document.getElementById('fluxo-legenda');
+      el.innerHTML = html;
+      el.classList.add('visivel');
+      const meuAlvo = tempoVirtual + 6000;
+      alvoOcultarLegendaFluxo = meuAlvo;
+      agendarVirtual(() => {
+        if (alvoOcultarLegendaFluxo === meuAlvo) el.classList.remove('visivel');
+      }, 6000);
+    }
+
+    const ETAPAS_MONOLITO = [
+      {
+        re: /POST \/pedidos recebido/, no: 'apresentacao', tipo: 'ativo',
+        titulo: 'POST /pedidos', acao: 'Controller recebendo e validando o schema (Zod)',
+        legenda: 'Cliente envia <strong>POST /pedidos</strong> → o Controller recebe e valida o schema (Zod).'
+      },
+      {
+        re: /payload válido -> delegando/, caminho: ['apresentacao', 'aplicacao'], tipo: 'ativo',
+        titulo: 'POST /pedidos', acao: 'Payload válido — delegando ao Use Case',
+        legenda: 'Payload válido → Controller delega ao <strong>Use Case</strong> da Aplicação.'
+      },
+      {
+        re: /\[Application:UseCase\] orquestrando/, no: 'aplicacao', tipo: 'ativo',
+        titulo: 'CriarPedidoUseCase', acao: 'Orquestrando: montando Value Objects',
+        legenda: 'Use Case orquestra: monta os Value Objects e aciona o Domínio.'
+      },
+      {
+        re: /\[Domain\] Pedido\.criar\(\)/, caminho: ['aplicacao', 'dominio'], tipo: 'ativo',
+        titulo: 'CriarPedidoUseCase', acao: 'Acionando Pedido.criar() no Domínio',
+        legenda: 'Domínio validou as <strong>invariantes de negócio</strong>.'
+      },
+      {
+        re: /\[Infrastructure:UnitOfWork\] BEGIN/, caminho: ['dominio', 'persistencia'], tipo: 'ativo',
+        titulo: 'Pedido.criar()', acao: 'Invariantes OK — abrindo transação (BEGIN)',
+        legenda: 'Abre uma transação (<strong>BEGIN</strong>) — Unit of Work.'
+      },
+      {
+        re: /\[Infrastructure:Repository\] traduzindo/, no: 'persistencia', tipo: 'ativo',
+        titulo: 'PedidoRepositoryPrisma', acao: 'Traduzindo Entidade em linhas de tabela',
+        legenda: 'Repository traduz a Entidade em linhas de tabela.'
+      },
+      {
+        re: /\[Infrastructure:UnitOfWork\] COMMIT/, caminho: ['persistencia', 'banco'], tipo: 'sucesso',
+        titulo: 'UnitOfWork', acao: 'Persistindo no SQLite', resposta: 'COMMIT confirmado',
+        legenda: '<strong>COMMIT</strong> — dados gravados atomicamente no SQLite.'
+      },
+      {
+        re: /pedido criado com sucesso/, caminho: ['banco', 'persistencia', 'dominio', 'aplicacao', 'apresentacao'], tipo: 'sucesso',
+        titulo: 'POST /pedidos', acao: 'Resposta subindo pelas camadas de volta', resposta: '201 Created',
+        legenda: '<strong>201 Created</strong> sobe de volta pelas camadas até o cliente — pedido confirmado.'
+      },
+      {
+        re: /400 - payload sintaticamente inválido/, no: 'apresentacao', tipo: 'erro',
+        titulo: 'POST /pedidos', acao: 'Validação de schema (Zod)', resposta: '400 Bad Request',
+        legenda: '<strong>400 Bad Request</strong> — falha na validação sintática (Zod). Rejeitado na Apresentação, sem acionar Aplicação ou Domínio.'
+      },
+      {
+        re: /400 - violação de regra de domínio/, no: 'dominio', tipo: 'erro',
+        titulo: 'Pedido.criar()', acao: 'Validando invariante de negócio', resposta: '400 — invariante violada',
+        legenda: '<strong>400 Bad Request</strong> — payload sintaticamente válido, mas o Domínio recusou por violar uma invariante de negócio.'
+      },
+      {
+        re: /ROLLBACK/, no: 'persistencia', tipo: 'erro',
+        titulo: 'UnitOfWork', acao: 'Desfazendo alterações', resposta: 'ROLLBACK',
+        legenda: '<strong>ROLLBACK</strong> — a transação é desfeita por inteiro; nenhum dado é persistido.'
+      },
+      {
+        re: /500 - erro inesperado/, no: 'apresentacao', tipo: 'erro',
+        titulo: 'POST /pedidos', acao: 'Exceção não tratada', resposta: '500 Internal Server Error',
+        legenda: '<strong>500 Internal Server Error</strong> — exceção não tratada na camada de Apresentação.'
+      },
+    ];
+
+    const ETAPAS_MICROSSERVICOS = [
+      {
+        re: /\[api-gateway\] POST \/pedidos -> encaminhando para ms-orders/, caminho: ['cliente', 'api-gateway'], tipo: 'ativo',
+        titulo: 'POST /pedidos', acao: 'Cliente chamando o API Gateway',
+        legenda: 'Cliente chama o <strong>API Gateway</strong>, único ponto de entrada HTTP.'
+      },
+      //P.O.G - Programação orientada a gambiarra 🥀
+      {
+        re: /\[ms-orders\] pedido .* persistido \+ evento gravado no Outbox/, tipo: 'ativo',
+        legenda: 'ms-orders grava o Pedido e o evento no Outbox na mesma transação local, e responde ao cliente. A Saga prossegue de forma assíncrona, desacoplada dessa resposta HTTP.',
+        sequenciaCaminhos: [
+          {
+            caminho: ['api-gateway', 'ms-orders'], tipo: 'ativo',
+            titulo: 'POST /pedidos', acao: 'Gateway encaminhou; gravando Pedido + evento no Outbox'
+          },
+          {
+            caminho: ['ms-orders', 'api-gateway', 'cliente'], tipo: 'sucesso',
+            titulo: 'POST /pedidos', acao: 'Resposta síncrona imediata — Saga segue em 2º plano', resposta: '201 Created (PENDENTE)'
+          },
+        ]
+      },
+      {
+        re: /\[ms-orders:OutboxPublisher\] evento 'PedidoCriadoEvent' publicado/, caminho: ['ms-orders', 'broker'], tipo: 'ativo',
+        titulo: 'PedidoCriadoEvent', acao: 'Outbox Publisher enviando ao broker (assíncrono)',
+        legenda: 'Outbox Publisher envia <strong>PedidoCriadoEvent</strong> ao broker (assíncrono).'
+      },
+      {
+        re: /\[ms-inventory\] PedidoCriadoEvent recebido/, caminho: ['broker', 'ms-inventory'], tipo: 'ativo',
+        titulo: 'PedidoCriadoEvent', acao: 'ms-inventory reservando os itens',
+        legenda: 'ms-inventory consome o evento e reserva os itens no seu estoque isolado.'
+      },
+      {
+        re: /\[ms-inventory\] EstoqueReservadoEvent publicado/, caminho: ['ms-inventory', 'broker'], tipo: 'ativo',
+        titulo: 'EstoqueReservadoEvent', acao: 'Publicando confirmação da reserva', resposta: 'Estoque reservado',
+        legenda: 'Estoque reservado — <strong>EstoqueReservadoEvent</strong> publicado.'
+      },
+      {
+        re: /\[ms-payments\] processando pagamento/, caminho: ['broker', 'ms-payments'], tipo: 'ativo',
+        titulo: 'EstoqueReservadoEvent', acao: 'ms-payments processando o pagamento simulado',
+        legenda: 'ms-payments consome o evento e processa o pagamento simulado.'
+      },
+      {
+        re: /\[ms-payments\] pagamento APROVADO/, caminho: ['ms-payments', 'broker'], tipo: 'sucesso',
+        titulo: 'PagamentoAprovadoEvent', acao: 'Pagamento aprovado — publicando evento', resposta: 'Aprovado',
+        legenda: 'Pagamento <strong>APROVADO</strong> — evento publicado.'
+      },
+      //Por tudo q é mais sagrado, não mexa sem saber!
+      {
+        re: /\[ms-orders:Saga\] pagamento aprovado .*-> Saga concluída com SUCESSO/, tipo: 'sucesso',
+        legenda: 'Saga recebe a confirmação de pagamento e marca o pedido como <strong>CONFIRMADO</strong>. O cliente obtém esse resultado via polling em <code>GET /pedidos/:id</code> — a resposta HTTP original (201) já havia encerrado antes da conclusão da Saga.',
+        sequenciaCaminhos: [
+          { caminho: ['broker', 'ms-orders'], tipo: 'sucesso', titulo: 'PagamentoAprovadoEvent', acao: 'Saga recebendo a aprovação' },
+          { caminho: ['ms-orders', 'api-gateway', 'cliente'], tipo: 'sucesso', titulo: 'GET /pedidos/:id', acao: 'Cliente consulta o resultado final (polling)', resposta: 'Pagamento aprovado — Pedido CONFIRMADO' },
+        ]
+      },
+      {
+        re: /\[ms-payments\] pagamento FALHOU/, caminho: ['ms-payments', 'broker'], tipo: 'erro',
+        titulo: 'PagamentoFalhouEvent', acao: 'Pagamento recusado — publicando evento', resposta: 'Saldo insuficiente',
+        legenda: 'Pagamento <strong>FALHOU</strong> (saldo insuficiente) — evento publicado.'
+      },
+      {
+        re: /\[ms-orders:Saga\] pagamento FALHOU/, tipo: 'erro',
+        legenda: 'Saga recebe a recusa do pagamento e marca o pedido como <strong>CANCELADO</strong>. O cliente obtém esse resultado via polling em <code>GET /pedidos/:id</code> — a resposta HTTP original (201) já havia encerrado antes da conclusão da Saga.',
+        sequenciaCaminhos: [
+          { caminho: ['broker', 'ms-orders'], tipo: 'erro', titulo: 'PagamentoFalhouEvent', acao: 'Saga recebendo a falha' },
+          { caminho: ['ms-orders', 'api-gateway', 'cliente'], tipo: 'erro', titulo: 'GET /pedidos/:id', acao: 'Cliente consulta o resultado final (polling)', resposta: 'Pagamento reprovado — Pedido CANCELADO' },
+        ]
+      },
+      {
+        re: /\[ms-inventory\] PagamentoFalhouEvent recebido -> disparando Ação Compensatória/, caminho: ['broker', 'ms-inventory'], tipo: 'erro',
+        titulo: 'PagamentoFalhouEvent', acao: 'Disparando Ação Compensatória',
+        legenda: '<strong>Ação Compensatória:</strong> ms-inventory reverte a reserva.'
+      },
+      {
+        re: /\[ms-inventory\] EstoqueRevertidoEvent publicado/, caminho: ['ms-inventory', 'broker'], tipo: 'sucesso',
+        titulo: 'EstoqueRevertidoEvent', acao: 'Reserva revertida — publicando evento', resposta: 'Consistência restaurada',
+        legenda: 'Reserva revertida → consistência eventual restaurada.'
+      },
+    ];
+
+    async function processarEtapa(etapa) {
+      mostrarLegendaFluxo(etapa.legenda);
+      if (etapa.sequenciaCaminhos) {
+        for (const trecho of etapa.sequenciaCaminhos) {
+          marcarNo(trecho.caminho[0], trecho.tipo);
+          await animarCaminho(trecho.caminho, trecho);
+          marcarNo(trecho.caminho[trecho.caminho.length - 1], trecho.tipo);
+        }
+      } else if (etapa.caminho) {
+        marcarNo(etapa.caminho[0], etapa.tipo);
+        await animarCaminho(etapa.caminho, { titulo: etapa.titulo, acao: etapa.acao, resposta: etapa.resposta, tipo: etapa.tipo });
+        marcarNo(etapa.caminho[etapa.caminho.length - 1], etapa.tipo);
+      } else if (etapa.no) {
+        marcarNo(etapa.no, etapa.tipo);
+      }
+    }
+
+    let filaAnimacaoFluxo = Promise.resolve();
+    function enfileirarEtapa(etapa) {
+      filaAnimacaoFluxo = filaAnimacaoFluxo.then(() => processarEtapa(etapa)).catch((e) => console.error('[fluxo]', e));
+    }
+
+    function conectarFluxo(logsUrl, etapas) {
+      const fonte = new EventSource(logsUrl);
+      fonte.onmessage = (evento) => {
+        const linha = evento.data;
+        for (const etapa of etapas) {
+          if (!etapa.re.test(linha)) continue;
+          enfileirarEtapa(etapa);
+          break;
+        }
+      };
+      return fonte;
+    }
+
+    conectarFluxo('/api/logs/monolith?somenteNovas=1', ETAPAS_MONOLITO);
+    conectarFluxo('/api/logs/microservices?somenteNovas=1', ETAPAS_MICROSSERVICOS);
+
+    async function dispararSimulacao(url, botao) {
+      botao.disabled = true;
+      const textoOriginal = botao.textContent;
+      botao.textContent = 'Enviando...';
+      try {
+        const resp = await fetch(url, { method: 'POST' });
+        const dados = await resp.json();
+        if (!dados.alcancado) mostrarLegendaFluxo(`<strong style="color:#ef5a5a">Falha ao disparar:</strong> ${dados.erro || 'veja o terminal do dashboard'}`);
+      } catch (erro) {
+        mostrarLegendaFluxo(`<strong style="color:#ef5a5a">Erro de rede:</strong> ${erro.message}`);
+      } finally {
+        setTimeout(() => { botao.disabled = false; botao.textContent = textoOriginal; }, 1000);
+      }
+    }
+  </script>
+</body>
+
+</html>

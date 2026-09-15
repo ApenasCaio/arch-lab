@@ -1,0 +1,40 @@
+// Schema Prisma do MONOLITO — um único banco relacional, compartilhado por
+// todas as camadas do módulo. Contraste isto com o ecossistema de
+// microsserviços, onde cada serviço tem seu PRÓPRIO banco.
+//
+// Usamos SQLite (um arquivo local, sem nenhum servidor de banco para
+// instalar/rodar) para que a demonstração funcione com zero dependências
+// além do Node.js. Em produção real, um Postgres/MySQL seria mais
+// apropriado — mas a arquitetura em camadas discutida aqui é IDÊNTICA
+// independentemente do SGBD por trás do repositório (essa é literalmente a
+// vantagem de isolar a Infraestrutura atrás de uma interface de domínio).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model PedidoModel {
+  id        String            @id
+  clienteId String
+  status    String
+  itens     ItemPedidoModel[]
+  criadoEm  DateTime          @default(now())
+
+  @@map("pedidos")
+}
+
+model ItemPedidoModel {
+  id                String      @id @default(uuid())
+  pedidoId          String
+  pedido            PedidoModel @relation(fields: [pedidoId], references: [id])
+  produtoId         String
+  quantidade        Int
+  precoUnitarioCent Int
+
+  @@map("itens_pedido")
+}

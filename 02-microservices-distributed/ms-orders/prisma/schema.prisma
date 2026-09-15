@@ -1,0 +1,39 @@
+// Banco de dados ISOLADO do ms-orders. Nenhum outro microsserviço tem
+// acesso direto a este schema — é uma regra dura do estilo arquitetural:
+// "Database per Service". A tabela `outbox_events` é o coração do padrão
+// Transactional Outbox (ver src/outbox/OutboxRepository.ts).
+//
+// SQLite (arquivo local) para a demo não precisar de nenhum servidor de
+// banco rodando — cada microsserviço "isolado" vira literalmente um
+// arquivo .db separado em disco.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model PedidoModel {
+  id        String   @id
+  clienteId String
+  status    String
+  valorTotalCent Int
+  itensJson String
+  criadoEm  DateTime @default(now())
+
+  @@map("pedidos")
+}
+
+model OutboxEventModel {
+  id          String   @id @default(uuid())
+  tipo        String
+  pedidoId    String
+  payloadJson String
+  publicado   Boolean  @default(false)
+  criadoEm    DateTime @default(now())
+
+  @@map("outbox_events")
+}

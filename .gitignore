@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+
+# bancos SQLite locais (cada serviço cria o seu ao rodar `npm start`)
+prisma/data/
+*.db
+*.db-journal
+
+.env
